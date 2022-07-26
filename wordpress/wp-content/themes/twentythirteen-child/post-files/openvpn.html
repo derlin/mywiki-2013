@@ -1,0 +1,165 @@
+<h6>install openvpn</h6>
+Type <code>sudo apt-get install openvpn</code> in your terminal.
+
+
+<!--------------------------------------------------------------------->
+<h2>Server-side</h2>
+
+    <h6>prepare your environment</h6>
+    Before generating the certificates, you will need to go through the following steps.
+
+    Copy the easy-rsa examples:
+    <pre class="prettyprint lang-text with-comments">
+ > cd /etc/openvpn
+ > mkdir easy-rsa
+ > cp -R /usr/share/doc/openvpn/examples/easy-rsa/2.0/* easy-rsa/
+    </pre>
+
+    Edit the global variables contained in <code>/etc/openvpn/easy-rsa/vars</code> according to your organization. You can set whatever you want (or leave it with defaults), but remember they will appear in your certificates!
+
+    Finally, run the following:
+    <pre class="prettyprint lang-text with-comments">
+> cd easy-rsa/
+>. ./vars  # set environment variables
+> ./clean-all
+    </pre>
+
+<!---------------------------------------->
+<h6>Generate the certificates</h6>
+
+For the server, you will need the following:
+    <pre class="prettyprint lang-text with-comments">
+# build the CERTIFICATE AUTHORITY (CA) cert/key
+# this will create ca.crt and ca.key in the 
+# /etc/openvpn/easy-rsa/keys directory
+> ./build-ca 
+
+# (optional)
+# build the INTERMEDIATE CERTIFICATE AUTHORITY cert/key
+# this will create server.crt and server.key in the 
+# /etc/openvpn/easy-rsa/keys directory
+> ./build-key-server server
+
+# build BUILD DIFFIE-HELLMAN PARAMETERS 
+# (necessary for the server end of a SSL/TLS connection)
+> ./build-dh
+
+    </pre>
+
+For each client, you will also generate a distinct certificate:
+    <pre class="prettyprint lang-text with-comments">
+> ./buil-key < the client name >
+    </pre>
+
+Each client will have to copy the <strong>ca.crt</strong>, <strong>clientname.crt</strong> and <strong>clientname.key</strong> to its machine, in the <code>/etc/openvpn/easy-rsa/keys</code> directory.
+
+
+<!---------------------------------------->
+<h6>Edit the configuration</h6>
+
+Open the <code>/etc/openvpn/server.conf</code>:
+    <pre class="prettyprint lang-text with-comments">
+    # Config OpenVPN
+    # http://wiki.debian.org/OpenVPN
+    
+    mode server
+    proto tcp
+    port 1154
+    dev tun
+    
+    # specify the path to the files previously created
+    ca ca.crt
+    cert server.crt
+    key server.key
+    dh dh1024.pem
+    tls-auth ta.key 0
+
+    cipher AES-256-CBC
+    
+    # specify the ip pool adress
+    server 10.8.0.0 255.255.255.0
+    push "redirect-gateway def1 bypass-dhcp"
+    
+    # can maybe remove " bypass-dhcp"
+    # for routing to work, put this in /etc/rc.local:
+    # iptables -t nat -I POSTROUTING -o wlan0 -j MASQUERADE
+    # (wlan0 is my network interface going to 
+    # the Internet / gateway going to the Internet 172.16.0.3)
+    
+    push "dhcp-option DNS 172.16.0.3"
+    keepalive 10 120
+    
+    #user nobody
+    #group nogroup
+    #chroot /etc/openvpn/jail
+    persist-key
+    persist-tun
+    comp-lzo
+    
+    verb 3
+    mute 20
+    status openvpn-status.log
+    log-append /var/log/openvpn.log
+    </pre>
+
+<!---------------------------------------->
+<h6>Final touch</h6>
+Copy the following line in <code>/etc/rc.local</code>, just before <code>exit 0</code>:
+    <pre class="prettyprint lang-text with-comments">
+# set eth0 or wlan0 depending of the interface you use
+iptables -t nat -I POSTROUTING -o wlan0 -j MASQUERADE
+    </pre>
+
+Edit the <code>/etc/sysctl.conf</code> file and uncomment the line:
+    <pre class="prettyprint lang-text with-comments">
+net.ipv4.ip_forward=1
+    </pre>
+
+<!----------------------------------------------------------------------------------->
+
+<h2>Client side</h2>
+The authentication is possible through the certificate previously generated. The client should thus have the following files in his machine:
+<ul>
+<li><code>ca.crt</code></li>
+<li><code>clientname.crt</code></li>
+<li><code>clientname.key</code></li>
+<li><code>ta.key</code></li>
+<li>a configuration file, see below</li>
+</ul>
+
+<strong>On Linux</strong>: install openvpn and run the following command:
+    <pre class="prettyprint lang-text with-comments">
+# the file must imperatively end with .conf
+> openvpn &lt;path-to-client-config.conf&gt;
+    </pre>
+
+<strong>On Windows</strong>: isntall openvpnclient, copy the mentioned files in <code>Program Files/openvpn/config</code>. The configuration file must imperatively end with <strong>.opvn</strong>.
+
+<!---------------------------------------->
+<h6>The configuration file</h6>
+
+    <pre class="prettyprint lang-text with-comments">
+    client 
+    dev tun
+    proto tcp-client
+
+    remote error418.no-ip.org 8989  # server's ip and port
+
+    resolv-retry infinite
+    cipher AES-256-CBC
+    
+    # Keys and certificates
+    ## !! relative path !!
+    ca       ca.crt
+    cert     clientname.crt    # replace clientname by your own
+    key      clientname.key
+    tls-auth ta.key 1
+    
+    nobind
+    persist-key
+    persist-tun
+    comp-lzo
+    verb 4 # or less... but 4 is useful for troubleshooting!
+    </pre>
+
+

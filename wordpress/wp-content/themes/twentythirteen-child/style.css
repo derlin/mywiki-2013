@@ -1,0 +1,136 @@
+
+/*
+Theme Name:     Twenty Thirteen Child
+Description:    Twenty Thirteen Child Theme
+Author:         Lucy Linder
+Template:       twentythirteen
+Version:        1.0.0
+ */
+
+@import url('../twentythirteen/style.css');
+
+/* !!! main style.css modified line 981 : max-width: 1200px !!! */
+
+body.tag { /* avoid conflicts with prettify span.tag */
+    color: inherit;
+}
+
+body li {
+    padding: 3px 0;
+}
+
+:focus {
+    outline: none;
+}
+
+body {
+    text-align: justify;
+}
+
+
+h1, h2 {
+    text-align: center;
+}
+    
+h3, h4, h5, h6, h7 {
+    text-align: left;
+}
+
+h5, h6 {
+    margin: 0;
+    padding: 9px 0;
+}
+
+h1 {
+    font-size: 40px;
+}
+
+.entry-meta {
+    text-align: center;
+}
+
+.navbar {
+    background-color: rgba(242, 191, 114, 0.1);
+    text-align: left;
+}
+
+
+#main {
+    max-width: 1290px;
+    margin: 0 auto;
+}
+
+.row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+#widgbs_sidebar {
+    max-width:240px;
+    text-align: left;
+}
+
+.menu-item ul a {
+    text-align: left;
+}
+
+/* category pages */
+
+body .archive-title, body .archive-meta {
+    font: 300 italic 16px "Source Sans Pro", Helvetica, sans-serif;
+    padding: 7px 0;
+    text-align: right;
+}
+
+code {
+    font-size: 0.9em;
+    white-space: normal;
+    background-color: transparent;
+}
+
+
+pre {
+    background: rgba(242, 191, 114, 0.1);
+    border-color: rgba(242, 191, 114, 0.5);
+    border-style: dotted;
+    overflow: auto;
+    white-space: nowrap;
+}
+    
+/* prettify border color */
+pre.prettyprint {
+    border-left-color: #F2BF72 !important;
+}
+
+/* prettify theme : plain */
+pre.prettyprint.lang-text .nocode, pre.prettyprint.lang-text .str, 
+pre.prettyprint.lang-text .kwd, pre.prettyprint.lang-text .com, 
+pre.prettyprint.lang-text .typ, pre.prettyprint.lang-text .lit, 
+pre.prettyprint.lang-text .pun, pre.prettyprint.lang-text .pln, 
+pre.prettyprint.lang-text .tag, pre.prettyprint.lang-text .atn,
+pre.prettyprint.lang-text .atv, pre.prettyprint.lang-text .dec { 
+    color: #000; 
+    font-weight: normal;
+}
+
+pre.prettyprint.lang-text .com {
+    color: #800;
+}
+
+pre.prettyprint.lang-text.raw .com {
+    color: #000;
+}
+
+/* blockquotes */
+blockquote, blockquote p {
+    font-size: 15px !important;
+    line-height: 1.35;
+    font-style: normal;
+    font-weight: normal;
+}
+
+blockquote > div {
+    margin-right: 6%;
+    text-align: right;
+    font-size: 0.8em;
+}

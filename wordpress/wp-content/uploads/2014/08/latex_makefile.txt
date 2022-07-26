@@ -1,0 +1,39 @@
+TEX=pdflatex
+SRC=$(wildcard *.tex) # change it if you have more than one 
+                      # .tex file in the current directory
+OUT=$(SRC:.tex=.pdf)
+
+OUT_DIR=./out  # if you do not want it, remove ARGS and compile deps
+ARGS=-output-directory=$(OUT_DIR) -aux-directory=$(OUT_DIR)
+
+# if your templates are not in your path (like in ~/texmf folder), 
+# set the TEXINPUTS path like this:
+export TEXINPUTS=../TEMPLATES:
+
+# =========================
+
+compile: $(OUT_DIR)
+	$(TEX) $(ARGS) $(SRC) &amp;&amp; mv out/$(OUT) .
+
+all: compile clean show
+
+show: 
+	if [ ! -e $(OUT) ]; then make compile; fi
+	xdg-open $(OUT)
+
+# ------------------------
+
+$(OUT_DIR):
+	mkdir $(OUT_DIR)
+
+# ------------------------
+
+clean_all: clean
+	rm -f $(OUT)
+
+clean:
+	rm -rf $(OUT_DIR) 
+
+# ------------------------
+
+.PHONY: all clean show

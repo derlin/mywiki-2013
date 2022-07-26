@@ -1,0 +1,58 @@
+<h2>Moving across windows</h2>
+
+To facilitate the use of multiple windows, you can easily remap the
+<tt>wincmd</tt> to your favorite key combos. For me, it is space and then the
+arrow:
+<pre class="prettyprint lang-text">
+nmap <silent> <space><Up> :wincmd k<CR>
+nmap <silent> <space><Down> :wincmd j<CR>
+nmap <silent> <space><Left> :wincmd h<CR>
+nmap <silent> <space><Right> :wincmd l<CR>
+</pre>
+You can also use the built-in <code><ctrl>w [arrow]</code>
+
+To open a new window: <code>sp [h|v]</code>, for horizontal or vertical.
+<h2>Misc</h2>
+
+<table class="col1-tt">
+    <tr><td style="font-family:inherit"><strong>Command</strong></td><td><strong>Action</strong></td></tr>
+    <tr><td>.</td><td>repeat the last change made in normal mode</td></tr>
+    <tr><td>z=</td><td>open a list of suggestions when the cursor is on a
+    mispelled word</td></tr>
+    <tr><td>:set nocindent</td><td>stop indenting text after (,{, etc. Useful
+    when you are editing simple text</td></tr>
+    <tr><td>*</td><td>go to the next occurrence of the word under the cursor</td></tr>
+    <tr><td>#</td><td>go to the previous occurrence of the word under the cursor</td></tr>
+    <tr><td>yiw|viw</td><td>yank|select the word under the cursor</td></tr>
+    <tr><td>shift+arrow</td><td>jump a whole word with the cursor</td></tr>
+
+
+</table>
+
+<h2>Vim infos</h2>
+<table class="col1-tt">
+    <tr><td style="font-family:inherit"><strong>Command</strong></td><td><strong>Action</strong></td></tr>
+    <tr><td>:set variablename?</td><td>show the value of a variable</td></tr>
+    <tr><td>:verbose set variablename?</td><td>show the value of a variable and where it is defined</td></tr>
+</table>
+
+<h2>Vimrc</h2>
+
+<h3>Backups</h3>
+To avoid the <tt>.backups</tt> polluting your filesystem, you can group all the backup files (ending with ~) to one directory with those lines:
+<pre class="prettyprint">
+set backupdir=~/.vim/backup//,~/tmp//,~/
+set backup
+set directory=~/.vim/backup//,~/tmp//,~/
+set noswapfile
+</pre>
+This means that the backups will be written in your home directory. If the latter is not writeable, tmp will be used, etc.
+
+If it does not work, check where the backupdir variable is set using <code>:verbose set backupdir?</code>
+
+
+<style type="text/css">
+    .col1-tt td:first-child { white-space: nowrap; font-family: monospace;
+        padding-right: 20px; }
+</style>
+

@@ -1,0 +1,283 @@
+<h2>Notes on partitioning</h2>
+If you start from scratch (new disk), then here are some useful information.
+
+From now on, let's say we want the root filesystem on /dev/sda and we have bios not uefi.
+
+<h4>GPT vs MBR</h4>
+Before digging into it, I always stumbled accross the same problem when I wanted to install grub into a partitioned disk:
+<pre class="prettyprint lang-text">
+# grub-install /dev/sda
+/usr/sbin/grub-setup: warn: This GPT partition label has no BIOS Boot Partition; embedding won't be possible!.
+/usr/sbin/grub-setup: warn: Embedding is not possible.  GRUB can only be installed in this setup by using blocklists.  However, 
+blocklists are UNRELIABLE and their use is discouraged..
+/usr/sbin/grub-setup: error: will not proceed with blocklists.
+</pre>
+
+To avoid this, I usually cleared my disk and created a mbr partition... Not really a solution.
+
+Here is the trick:
+<ul>
+    <li>Install <tt>gdisk</tt>: <code>pacman -S gdisk</code></li>
+    <li>Delete everything from your disk </li>
+    <li>Using gdisk, create a 1007K partition of type <strong>BIOS boot partition</strong>at the beginning of the disk:
+    <pre class="prettyprint lang-text">
+# gdisk /dev/sda
+Command (? for help): n
+Partition number (1-128, default 1): <Enter>
+First sector (0-15654878, default = 0): <Enter>
+Size in sectors or {KMGTP} (default = 15654839): 1007K
+Hex code or GUID (L to show codes, Enter = 8300): ef02
+Command (? for help): w
+    </pre>
+    </li>
+    <li>Partition the rest of the disk as you wish. 
+    <p><tt><br />
+        Linux partition Hex Code: 8300<br />
+        Swap Hex Code: 8200<br />
+        Show partition table: p<br />
+        Write table on disk: w<br />
+
+    </tt></p>
+    </li>
+    <li>Don't forget to create a filesystem on your root partition: <code>mkfs.ext4 /dev/sda2</code></li>
+    <li>Check the result with <code>parted /dev/sda print</code></li>
+</ul>
+
+<div class="alert alert-warning">
+    <strong>Note</strong>
+    <p>The BIOS boot partition doesn't get mounted and doesn't need formatting or a file system. It is just somewhere grub uses when it installs to disk and it finds it automatically.</p>
+    <p>If you want a regular boot partition, you need to create a separate partition for that with a regular file system type and of a reasonable size. ext4 is a perfectly good choice for /boot (I use it for my /boot) but you will need something bigger than 1MB!</p>
+</div>
+<h2>Install</h2>
+
+create a usb stick and boot on it.
+In the menu, select "boot archlinux [your architecture]".
+You will get a prompt (zsh :)), where you are root.
+
+First, language and keyboard, internet connection:
+<pre class="prettyprint lang-text">
+loadkeys fr_CH-latin1 # change keyboard layout
+vi /etc/locale.gen
+## uncomment the langugage that suits you
+locale-gen
+export LANG=fr_CH.utf8 # or the one you chose
+systemctl start dhcpcd.service # enable internet service
+ping www.google.com # check your connection
+</pre>
+
+If you don't have any partition formatted in ext4, I let you find the proper documentation on how to use <code>fdisk</code> from the commandline. If, like me, you are not really sure of yourself, just use a live usb of ubuntu or something that gives you gparted ^^.
+If you already have a partition and just need to clear it, type <code>mkfs.ext4 /dev/sd[...]</code>
+
+Now that you have a partition in ext4 to install your new system to:
+<pre class="prettyprint lang-text">
+mount /dev/sd[..] /mnt # mount it to mnt
+lsblk /dev/sd[..]       # make sure it is mounted
+#! if you have a home on another partition or drive
+mkdir /mnt/home
+mount /dev/sd[...] /mnt/home
+</pre>
+
+Select a mirror:
+<pre class="prettyprint lang-text">
+vi /etc/pacman.d/mirrorlist
+## choose your preferred mirror list and
+## set it first (for me, a swiss one does the trick)
+</pre>
+
+Install the base system:
+<pre class="prettyprint lang-text">
+pacstrap -i /mnt base   # this will install the core system
+                        # you can leave the default "all"
+genfstab -U -p /mnt >> /mnt/etc/fstab  # create fstab
+less /mnt/etc/fstab                    # verify it was properly generated
+</pre>
+
+
+Chroot and configure the base system:
+<pre class="prettyprint lang-text">
+arch-root /mnt /bin/bash # unfortunately, zsh is not present on the new system
+vi /etc/locale.gen
+## uncomment the language you want
+locale-gen
+echo LANG=en_GB.UTF-8 > /etc/locale.conf
+export LANG=en_GB.UTF-8
+
+loadkeys fr_CH-latin1
+setfont Lat2-Terminus16 # really nice terminal font !
+
+vi /etc/vconsole.conf
+## put the following two lines:
+## KEYMAP=fr_CH-latin1
+## FONT=Lat2-Terminus16
+
+ln -s /usr/share/zoneinfo/Europe/Zurich /etc/localtime # configure the clock
+hwclock --systohc --utc
+
+echo my-hostname > /etc/hostname # set hostname
+
+passwd # set a password for root
+
+
+pacman -S grub os-prober    # os-prober is used to detect other os 
+grub-install --recheck /dev/sd[...]
+grub-mkconfig -o /boot/grub/grub.cfg
+## now, check /boot/grub/grub.cfg to ensure the other os were properly detected
+## each of them should have a menuentry of their own
+</pre>
+
+Finally:
+<pre class="prettyprint lang-text">
+exit
+umount /mnt
+reboot
+</pre>
+
+<h3>For those having GPT</h3>
+The grub makes an error and says it cannot install on partitionless or blocklists devices. No worry. A simple way is to convert your HDD from GPT partition table to MBR partition table (or MSDOS in Linux) and after that install your Linux OS.
+
+For that, boot on a live cd, launch gparted, clear your entire HDD drive, go to <code>device > create partition table...</code> and select <i>msdos</i>. You can then install grub normally.
+
+Note: you must choose the boot option <strong>Legacy first</strong> in your BIOS for this to work.
+
+<h2>Next steps</h2>
+
+Before you install a desktop environment, you will need internet access. Use the command <code>systemctl start dhcpcd.service</code> (but do not enable it, since it will later conflict with NetworkManager!) to connect.
+
+<pre class="prettyprint lang-text">
+systemctl start dhcpcd.service
+pacman -Syu # update your packages
+pacman -S base-devel 
+</pre>
+
+Create a new user:
+<pre class="prettyprint lang-text">
+useradd -m [name]  # -m to create a home directory
+passwd [name]
+</pre>
+
+Install the video drivers and such:
+<pre class="prettyprint lang-text">
+pacman -S xorg-server xorg-server-utils xorg-xinit
+pacman -S xf86-video-ati # for my part. For you, try to find the best video driver available with:
+## lspci | grep -i vga # will display your gpu model
+## pacman -Ss xf86-video | less  # will display a full list of drivers available
+pacman -S xf86-input-synaptics
+pacman -S ttf-dejavu
+</pre>
+
+<h2>Install Gnome and graphical stuffs</h2>
+
+<h3>Gnome and Slim</h3>
+<pre class="prettyprint lang-text">
+# Desktop Environment
+pacman -S gnome gnome-extra
+cp /etc/skel/.xinitrc /home/youruser
+vim /home/youruser/.xinitrc
+## add this line at the end of the file:
+## exec gnome-session
+
+# Session Manager
+pacman -S slim
+systemctl enable slim.service
+
+reboot
+</pre>
+
+<h3>NetworkManager</h3>
+
+<pre class="prettyprint lang-text">
+pacman -S networkmanager dhclient dnsmasq
+systemctl enable NetworkManager.service
+systemctl start NetworkManager.service # just this time, to avoid reboot
+</pre>
+
+<h3>Avahi</h3>
+
+<pre class="prettyprint lang-text">
+pacman -S avahi nss-mdns
+systemctl enable avahi-daemon.service
+systemctl start avahi-daemon.service # just this time
+vim /etc/nsswitch.conf
+## in arch, .local querying is disabled by default. So replace the line:
+##      hosts: files myhostname dns
+## by :
+##      hosts: files myhostname mdns_minimal [NOTFOUND=return] dns
+avahi-browse -alr # test it
+</pre>
+
+<h3>sudoers</h3>
+The easiest way is to type <code>visudo</code> as root to access the sudoers file in write mode and to uncomment the line <code>%wheel ALL=(ALL) ALL</code>. This will allow the users in the wheel group to use sudo.
+
+<h3>ssh</h3>
+<pre class="prettyprint lang-text">
+pacman -S openssh
+sysemctl enable sshd
+</pre>
+
+
+<h3>printers</h3>
+
+<pre class="prettyprint lang-text">
+pacman -S libcups cups
+# and for gnome
+pacman -S system-config-printer
+sysemctl enable cupsd.service
+</pre>
+
+<h3>yaourt</h3>
+From repo:
+<pre class="prettyprint lang-text">
+vim /etc/pacman.conf
+## add the following:
+[archlinuxfr]
+SigLevel = Never
+Server = http://repo.archlinux.fr/$arch
+##
+pacman -Sy yaourt
+</pre>
+
+Manually:
+<pre class="prettyprint lang-text">
+curl -O https://aur.archlinux.org/packages/pa/package-query/package-query.tar.gz
+tar zxvf package-query.tar.gz
+cd package-query
+makepkg -si
+cd ..
+curl -O https://aur.archlinux.org/packages/ya/yaourt/yaourt.tar.gz
+tar zxvf yaourt.tar.gz
+cd yaourt
+makepkg -si
+cd ..
+</pre>
+
+
+<h3>Gnome specifics</h3>
+<pre class="prettyprint lang-text">
+## to get back the old search behavior 
+## press a letter to navigate quickly in nautilus
+yaourt nautilus-typeahead
+
+## gnome tweak tool
+pacman -S gnome-tweak-tool
+
+## black theme
+yaourt gtk-theme-bleufear-git 
+
+## set the close buttons on the left of the windows
+dconf-editor
+# navigate to org > gnome > shell > overrides and set the button-layout property to:
+# close,maximize,minimize: 
+
+## set ctrl+alt+T for opening a terminal
+# open keyboard > shortcuts > custom shortcuts. Add a command "gnome-terminal".
+</pre>
+
+
+<h3>change uid and gid of an existing user</h3>
+<pre class="prettyprint lang-text">
+usermod -u <NEWUID> <LOGIN>    
+groupmod -g <NEWGID> <GROUP>
+find / -user <OLDUID> -exec chown -h <NEWUID> {} \;
+find / -group <OLDGID> -exec chgrp -h <NEWGID> {} \;
+usermod -g <NEWGID> <LOGIN>
+</pre>

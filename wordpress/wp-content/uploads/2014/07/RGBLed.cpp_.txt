@@ -1,0 +1,49 @@
+#include "Arduino.h"
+#include "RGBLed.h"
+
+/*
+ * mapping color <=> pin
+ * bit[0] = red
+ * bit[1] = green
+ * bit[2] = blue
+ */
+static byte cpmap[] = {1, 2, 4, 3, 5, 6, 7};
+
+RGBLed::RGBLed(int r, int g, int b)
+{
+    redPin   = r;
+    greenPin = g;
+    bluePin  = b;
+
+    pinMode(bluePin,  OUTPUT);
+    pinMode(greenPin, OUTPUT);
+    pinMode(redPin,   OUTPUT);
+
+}
+
+void RGBLed::on(Color_t color)
+{
+    byte pins = cpmap[color];
+
+    digitalWrite(redPin,    pins & 1);
+    digitalWrite(greenPin, (pins & 2) >> 1);
+    digitalWrite(bluePin,  (pins & 4) >> 2);
+
+}
+
+void RGBLed::off()
+{
+    digitalWrite(redPin,   LOW);
+    digitalWrite(greenPin, LOW);
+    digitalWrite(bluePin,  LOW);
+}
+
+void RGBLed::twinkle(Color_t color, int times, int rate)
+{
+    for (int i = 0; i < times; i++)
+    {
+    	on(color);
+    	delay(rate);
+    	off();
+    }
+}

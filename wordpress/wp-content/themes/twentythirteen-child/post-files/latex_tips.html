@@ -1,0 +1,36 @@
+<h2>Force the placement of a graphic</h2>
+<pre class="prettyprint lang-tex">
+\begin{figure*}[h]
+    \begin{center}
+        \includegraphics[width=.9\textwidth]{my-image}
+        \caption{this is a caption}
+    \end{center}
+\end{figure*}
+</pre>
+
+<h2>Expand margins</h2>
+Normally, margins are set in the directive:
+<pre class="prettyprint lang-tex">\usepackage[tmargin=2.2cm,bmargin=2.2cm,lmargin=1.5cm,rmargin=1.5cm]{geometry}</pre>
+Unfortunately, this is often done in the document template, thus not modifiable as we want.
+
+Here is an alternative. Add those lines in the preamble:
+<pre class="prettyprint lang-tex">
+\addtolength{\oddsidemargin}{1cm}
+\addtolength{\evensidemargin}{1cm}
+\addtolength{\textwidth}{-2cm}
+</pre>
+
+<h2>Specify the graphics path</h2>
+Add this line at the top of the preamble:
+<pre class="prettyprint lang-tex">
+\graphicspath{{resources/}}
+</pre>
+where <tt>resources</tt> is the name of the folder.
+
+Notice the <strong>double brackets</strong>: without it, nothing works.
+
+<h2>Inputenc error with lstlistings</h2>
+Just pass the following option to lst[input]listing:
+<pre class="prettyprint lang-text">
+inputenc=latin1
+</pre>

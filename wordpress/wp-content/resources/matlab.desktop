@@ -1,0 +1,9 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Type=Application
+Icon=/usr/share/icons/matlab.png
+Name=MATLAB
+Comment=Start MATLAB - The Language of Technical Computing
+Exec=env -u _JAVA_OPTIONS /opt/matlab/bin/matlab -desktop  -r "edit '%u';" 
+Categories=Development;
+MimeType=text/x-matlab;

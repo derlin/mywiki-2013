@@ -1,0 +1,8 @@
+/* CSS */
+.prettyprint.lang-tex .kwd { color: #8a4a0b; }
+.prettyprint.lang-tex .com { color: #868686; }
+.prettyprint.lang-tex .lit { color: #953838; }
+.prettyprint.lang-tex .opn, .prettyprint.lang-tex .clo { color: #145680; }
+.prettyprint.lang-tex .pun { color: #145680; }
+.prettyprint.lang-tex .pln { font-weight: normal; }
+.prettyprint.lang-tex .tag { color: #4c9067; font-weight: bold }

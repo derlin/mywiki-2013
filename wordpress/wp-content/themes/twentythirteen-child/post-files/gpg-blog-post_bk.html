@@ -1,0 +1,373 @@
+<h2>Create a master keypair and subkeys</h2>
+
+<h3>Create the master key</h3>
+
+<pre class="prettyprint lang-text">
+> gpg --gen-key
+
+Please select what kind of key you want:
+    (1) RSA and RSA (default)
+    (2) DSA and Elgamal
+    (3) DSA (sign only)
+    (4) RSA (sign only)
+Your selection? 1
+...
+RSA keys may be between 1024 and 4096 bits long.
+What keysize do you want? (2048) 4096
+...
+Please specify how long the key should be valid.
+    0 = key does not expire
+    <n>  = key expires in n days
+    <n>w = key expires in n weeks
+    <n>m = key expires in n months
+    <n>y = key expires in n years
+Key is valid for? (0) 0
+Key does not expire at all
+Is this correct? (y/N) y
+
+You need a user ID to identify your key; the software constructs the user ID
+from the Real Name, Comment and E-mail Address in this form:
+    "Heinrich Heine (Der Dichter)&lt;heinrichh@duesseldorf.de&gt;"
+
+Real name: Lala Lulu
+E-mail address: lala@truc.org
+Comment: 
+You selected this USER-ID:
+    "Lala Lulu &lt;lala@truc.org&gt;"
+
+Change (N)ame, (C)omment, (E)-mail or (O)kay/(Q)uit? o
+You need a Passphrase to protect your secret key.
+&lt;your passphrase, should be long&gt;
+</pre>
+
+<!----------------------------------------------------->
+<h3>Set some options</h3>
+
+<pre class="prettyprint lang-html">
+> gpg --edit-key lala@truc.org
+gpg> setpref SHA512 SHA384 SHA256 SHA224 AES256 AES192 AES CAST5 ZLIB BZIP2 ZIP Uncompressed
+gpg> save
+</pre>
+
+<strong>Note</strong>: to avoid setting the preferences each time you create a key, you can set them directly in your <code>~/.gnupg/gpg.conf</code> file. See the <a href="#conf-file">configuration file section</a> for more information.
+
+<!----------------------------------------------------->
+<h3>Create a set of subkeys</h3>
+
+<pre class="prettyprint lang-text">
+> gpg --edit-key lala@truc.org
+gpg> addkey
+...
+Please select what kind of key you want:
+    (3) DSA (sign only)
+    (4) RSA (sign only)
+    (5) Elgamal (encrypt only)
+    (6) RSA (encrypt only)
+Your selection? 4
+...
+RSA keys may be between 1024 and 4096 bits long.
+What keysize do you want? (2048) 4096
+...
+Key is valid for? (0) 0
+Key does not expire at all
+Is this correct? (y/N) y
+Really create? (y/N) y
+</pre>
+
+<!----------------------------------------------------->
+<h3>Export the keys to servers</h3>
+You can use either the master key or the subkey as argument to the export command, the result is the same. 
+
+The easiest way is to modify your configuration file, <code>~/.gunpg/gpg.conf</code> and add the following (or copy-paste the lines in the <a href="config-file">configuration file section</a>):
+
+<pre class="prettyprint lang-html">
+use-agent
+keyserver hkps://hkps.pool.sks-keyservers.net
+keyserver-options ca-cert-file=/home/.../.gnupg/sks-keyservers.netCA.pem
+keyserver-options no-honor-keyserver-url
+keyserver-options auto-key-retrieve
+</pre>
+
+In my case, I had to download the certificate <code>sks-keyservers.netCA.pem</code> of the keyserver and add it to my home, not <code>/etc/ssl/cert</code> (so I don't need to be root to run the command). 
+
+Then, you just need to run the following command:
+
+<pre class="prettyprint lang-html">
+> gpg2 --send-keys 0xDD580A819CD4B746
+</pre>
+
+where the keyid is found in the first line of the output of <code>gpg -K</code>:
+<pre class="prettyprint lang-text with-comments">
+> gpg -K
+/home/.../.gnupg/secring.gpg
+-----------------------------
+sec#  4096R/0x488BA441  # <----- this one, beginning with 0x
+</pre>
+
+<div class="alert alert-warning">
+<strong>Warning! </strong>
+If you run into troubles with the command gpg --send-key (protocol error), this is because only <strong>gpg2</strong> supports ssl. So, launch the latter command with <strong>gpg2</strong> !!
+</div>
+
+<!----------------------------------------------------->
+<h3>Export all the important stuff and clean your keyring</h3>
+
+To avoid keeping sensible data on your laptop, it is recommended to export at least the revocation certificate to a safer place. A good practice is also to keep the master keypair somewhere safe, importing it only when we need to change it (or sign other keys).
+
+Here, we will export everything, clear our keyring and re-import the subkey only.
+
+<pre class="prettyprint lang-html">
+> gpg --output \
+     lala@truc.org.gpg-revocation-certificate \
+     --gen-revoke lala@truc.org
+
+> gpg --export-secret-keys --armor \
+    lala@truc.org.private.gpg-key > lala@truc.org
+
+> gpg --export --armor \
+    lala@truc.org.public.gpg-key > lala@truc.org
+
+> gpg --export-secret-subkeys \
+    lala@truc.org.subkeys > lala@truc.org
+
+> mv lala@truc.org.* /somewhere/secure/
+
+> gpg --delete-secret-key lala@truc.org
+
+> gpg --import \
+    /somewhere/secure/lala@truc.org.subkeys
+</pre>
+
+To verify everything went fine, run the following command:
+
+<pre class="prettyprint lang-html">
+
+> gpg -K
+/home/.../.gnupg/secring.gpg
+-----------------------------
+sec#  4096R/0x488BA441 2013-03-13
+uid                    Lala Lulu &lt;lala@truc.org&gt;
+ssb   4096R/0x69B0EA85 2013-03-13
+ssb   4096R/0xC24C2CDA 2013-03-13
+</pre>
+
+Notice the #, which is the sign that we are now using a subkey.
+
+<!------------------------------------------------------------------------------------>
+<h2 id="conf-file">Configuration file</h2>
+
+OpenPGP best pratices recommends us to use a set of preferences for all our keys. Instead of using the <code>setpref</code> command of gpg each time, it is better to copy-paste them once and for all.
+To set the default settings, open the file <code>~/.gnupg/gpg.conf</code> with your favorite editor and copy-paste the following (you can delete everything else, except the lines about the keyservers):
+
+<pre class="prettyprint lang-text with-comments">
+# when outputting certificates, view user IDs distinctly from keys:
+fixed-list-mode
+# short-keyids are trivially spoofed; it's easy to create a long-keyid collision; if you care about strong key identifiers, you always want to see the fingerprint: 
+keyid-format 0xlong
+fingerprint
+# when multiple digests are supported by all recipients, choose the strongest one:
+personal-digest-preferences SHA512 SHA384 SHA256 SHA224
+# preferences chosen for new keys should prioritize stronger algorithms: 
+default-preference-list SHA512 SHA384 SHA256 SHA224 AES256 AES192 AES CAST5 BZIP2 ZLIB ZIP Uncompressed
+# If you use a graphical environment (and even if you don't) you should be using an agent:
+# (similar arguments as  https://www.debian-administration.org/users/dkg/weblog/64)
+use-agent
+# You should always know at a glance which User IDs gpg thinks are legitimately bound to the keys in your keyring:
+verify-options show-uid-validity
+list-options show-uid-validity
+# include an unambiguous indicator of which key made a signature:
+# (see http://thread.gmane.org/gmane.mail.notmuch.general/3721/focus=7234)
+sig-notation issuer-fpr@notations.openpgp.fifthhorseman.net=%g
+# when making an OpenPGP certification, use a stronger digest than the default SHA1:
+cert-digest-algo SHA256
+</pre>
+
+Read more on best practices <a href="https://we.riseup.net/riseuplabs+paow/openpgp-best-practices#update-your-gpg-defaults" target="_blank">here</a>.
+
+
+<!------------------------------------------------------------------------------------>
+<h2>Signatures and trust</h2>
+<p>
+OpenPGP is based on two principles: identity checks - verifying the link between a key and its owner - and trust - who you trust to check other's people identity. Those principles are gathered in the action of signing other people's keys.
+</p>
+<p>
+With gpg, <strong>signing</strong> a key is usually rather straighforward: either you sign a key or you don't. By appending your signature to a key, you let other people know that you performed a rough identity check. Unfortunately, this does not really give any information about trust at all...
+</p>
+<p>
+Actually, the OpenPGP standard also support more advanced features, called <strong>level certification</strong> and <strong>trust signatures</strong>, which are [unfortunately] disabled by default in GnuPG.
+
+<h5>Certification level</h5>
+Allows you to indicate how carefully you checked someone's identity. To enable it, use the option <code>--ask-cert-level</code> or add <code>ask-cert-level</code> in your default configuration file:
+<pre class="prettyprint lang-text with-comments">
+> gpg --sign-key --ask-cert-level &lt;id or email&gt;
+</pre>
+GnuPG let you choose between four levels:
+    <ol start="0">
+        <li>no indication</li>
+        <li>personal beliefs, but no real check. This may be useful for a "persona" verification, where you sign the key of a pseudonymous user.</li>
+        <li>casual checking</li>
+        <li>extensive check</li>
+    </ol>
+
+<h5>Trust level</h5>
+Allows you to indicate how much you trust someone and its ability to check other's identity. 
+<pre class="prettyprint lang-text with-comments">
+# in "edit-key" mode, use tsign instread of sign
+> gpg --edit-key &lt;id or email&gt;
+gpg> tsign # instead of sign
+</pre>
+
+When issuing a trust signature, gpg will ask you three questions:
+<ol>
+    <li>how far you trust this user to correctly verify other users' keys</li>
+    <li>depth of the trust signature: specifies how far you allow him to make trust signatures on your behalf. As I understood, this allows building <i>chains of trust</i> and <i>pyramidal certification systems</i>: setting a depth of 1 will make people fully trusted by him appear trusted to you --> transitivity (<a href="http://www.gossamer-threads.com/lists/gnupg/users/44058">example</a>)</li>
+    <li>enter a domain to restrict this signature: I could not grab the meaning or utility of this one so far...</li>
+</ol>
+</p>
+
+<p>
+Those features are interesting since they add valuable informations to one's signatures, but they also carry some security risks, since they tend to  leak more information about personal relationships (which would explain why they are disabled by default). 
+</p>
+
+<a href="http://tanguy.ortolo.eu/blog/article9/pgp-signature-infos">Further reading</a>
+
+<!------------------------------------------------------------------------------------>
+
+<h2>Signature/Certification process</h2>
+<strong>prequisite</strong> be sure that you have your master key in your keyring (you can import it with <code>gpg --import /path/to/mymaster.private.gpg-keys</code>).
+
+<!----------------------------------------------------->
+<h3>Sign the key of someone else</h3>
+<p>
+Signing a key includes three basic steps: signing the key, exporting the key, sending the key to its owner.
+</p>
+<p>
+To sign the key, use gpg (or gpg2, it does not matter):
+<pre class="prettyprint lang-text with-comments">
+# fetch the key from the keyserver
+> gpg2 --search-keys &lt;id or email&gt;
+# or use the following (id only)
+> gpg2 --recv-keys &lt;short id&gt;
+
+# check the fingerprint of the key (can also be done when editing a key,
+# through the fpr command)
+> gpg2 --fingerprint &lt;id or email&gt;
+
+# sign the key (using your master)
+> gpg2 --edit-key &lt;id or email&gt;
+gpg> uid 
+# if more than one result, select the right one
+gpg> &lt;number&gt;  # a * will be put after the selection
+gpg> sign # or tsign for trusted signatures
+Really sign ? Y
+&lt;passphrase&gt;
+
+# don't forget to save the changes
+gpg> save
+gpg> quit
+</pre>
+</p>
+
+Now, verify everything went well:
+<pre class="prettyprint lang-text with-comments">
+> gpg --list-sigs &lt;id or email&gt;
+pub   XXXXR/XxXXEFXXECCXEBXXXX XXXX-XX-XX [expires: XXXX-XX-XX]
+      Key fingerprint = XXDX AEXX EXXX FDXX FAXX  XXDX XXEF XXEC CXEB XXXX
+uid                 [  full  ] Other Guy &lt;other.guy@truc.org&gt;
+sig          0x2E20FA2997D 2013-12-19  [User ID not found]
+sig 3        0x95EF36ECC4E 2013-12-19  Other Guy &lt;other.guy@truc.org&gt;
+...
+sig          0xA534CC879DF 2013-12-21  Lala Lulu &lt;lala.lulu@truc.org&gt;
+</pre>
+
+You can also use the option <code>--check-sigs</code>, which will also print informations about certification and trust levels: an exclamation mark indicates a good signature and the number at the right of the sig is the certification level:
+
+<pre class="prettyprint lang-text with-comments">
+> gpg2 --check-sigs &lt;id or email&gt;             
+pub   XXXXR/XxXXEFXXECCXEBXXXX XXXX-XX-XX [expires: XXXX-XX-XX]
+      Key fingerprint = XXDX AEXX EXXX FDXX FAXX  XXDX XXEF XXEC CXEB XXXX
+...
+# good signature with extensive check
+sig!3        0x95EF36ECC4E 2013-12-19  Other Guy &lt;other.guy@truc.org&gt
+</pre>
+
+Now, export the newly signed key in a text file and delete the key:
+<pre class="prettyprint lang-text with-comments">
+# export the signed key (-a for text file, ASCII mode)
+> gpg2 --export -a &lt;id or email&gt; &gt; some_file.txt
+
+## send the email BEFORE deleting the key 
+## don't forget to encrypt the attachment as well
+
+# remove the signed key from the trust
+> gpg2 --delete-keys &lt;id or email&gt;
+</pre>
+
+Finally, send an email with the text file as attachment. Don't forget to sign and encrypt the <i>whole</i> email, checking the <strong>PGP/MIME option</strong> (so the attachment is also crypted).
+
+<div class="alert alert-warning">
+    <strong>Warning! </strong> the object of an email is NEVER encrypted.
+</div>
+
+<h3>Add a new signature to your key</h3>
+
+When receiving an email with a new signature, save the attachment somewhere and do the following:
+<pre class="prettyprint lang-text with-comments">
+# import the key
+&gt; gpg --import /path/to/attachment.txt
+
+# check that there is a new signature
+&gt; gpg --list-sigs &lt;id or email&gt;
+
+# send it to the keyservers
+&gt; gpg2 --send-keys &lt;long id&gt;
+</pre>
+
+<!------------------------------------------------------------------------------------>
+<h2>Miscellaneous</h2>
+<!----------------------------------------------------->
+<h3>Set the trust level of a key</h3>
+For your own keys, it is a good idea to set them to ultimate trust. For the other keys, the only purpose is to avoid the "this key is not fully trusted. Are you sure you want to ... ?" messages.
+
+To change the level of trust of a key, either use the commandline or use thunderbird.
+
+<pre class="prettyprint lang-text">
+ > gpg --edit-key &lt;keyid or email address&gt;
+ gpg> trust
+ gpg> save
+</pre>
+
+By convention, it is good practice to set <strong>ultimate</strong> to your own keys and <strong>full</strong> for the other ones.
+
+<!----------------------------------------------------->
+<h3>Generate good pseudo-random numbers</h3>
+
+Install <code>haveged</code>, which generates entropy source using the HAVEGE algorithm.
+
+
+<!----------------------------------------------------->
+<h3>Modify the master key</h3>
+
+When you modify your master, you don't need to reimport the subkeys. The only modification which will require a new export/import is a password modification.
+
+After a change, don't forget to re-export your master in a secure location.
+
+<!----------------------------------------------------->
+<h3>Keep your keyring up to date</h3>
+Don't forget to update your keyring, in case some of the keys are revocated or ...
+Use the command : 
+    <pre class="prettyprint lang-text">  gpg --refresh-keys</pre>
+or put it in a cronjob. One problem is that the server will always receive the full list of your contacts, making it easy for a bad guy to fetch the list of your contacts.
+
+If you are a little paranoiak, you can use <code>parcimonie.sh</code>, shich will use Tor and update only one key at a time. On debian, a package also called <code>parcimonie</code> available (a huge perl script).
+
+
+<!------------------------------------------------------------------------------------>
+<h2>Further reading</h2>
+
+<ul>
+<li><a href="https://we.riseup.net/riseuplabs+paow/openpgp-best-practices">OpenPGP best practices</a></li>
+<li><a href="http://www.phillylinux.org/keys/terminal.html">Keysigning with the GNU/Linux Terminal</a></li>
+<li><a href="http://tanguy.ortolo.eu/blog/article9/pgp-signature-infos">PGP signatures with trust and verification level</a></li>
+<li><a href="http://www.gnupg.org/documentation/manuals/gnupg-devel/index.html#Top">Using the GNU Privacy Guard</a></li>
+</ul>

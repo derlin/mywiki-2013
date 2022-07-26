@@ -1,0 +1,68 @@
+<h2>Mount Clonezilla image</h2>
+
+One important feature that Clonezilla does not offer out of the box is browsing images to restore single files. You can only restore complete partitions or drives. But there is a way around this, with the shortcoming that it requires time and disk space...
+
+<h3>Create the iso</h3>
+First, we need to restore an image from the different *.gz files. This can be done inline with the following command:
+<pre class="prettyprint lang-text">
+touch /path_to_new_image/partition.img # create the empty file first
+cat /path-to-clonezilla-images/your_partition.ptcl-img.gz.*
+	| gzip -d -c
+	| partclone.restore -C -s - -O /path_to_new_image/partition.img
+</pre>
+
+The output should be like this:
+<pre class="prettyprint lang-text">
+Starting to restore image (-) to device (partition.img)
+Calculating bitmap... Please wait... done!
+File system:  EXTFS
+Device size:  447.7 GB = 109296383 Blocks
+Space in use: 351.6 GB = 85836599 Blocks
+Free Space:    96.1 GB = 23459784 Blocks
+Block size:   4096 Byte
+Elapsed: 02:26:11, Remaining: 00:00:00, Completed: 100.00%, Rate:   2.41GB/min, 
+current block:  109056032, total block:  109296383, Complete: 100.00%           
+Total Time: 02:26:11, Ave. Rate:    2.4GB/min, 100.00% completed!
+Syncing... OK!
+Partclone successfully restored the image (-) to the device (partition.img)
+Cloned successfully.
+</pre>
+
+<h3>Mounting the image</h3>
+Normally, a simple mount command is sufficient:
+<pre class="prettyprint lang-text">
+mkdir /media/lala # or any directory
+sudo mount -o loop -t ext4 /path-to-new-image/partition.img /media/lala
+</pre>
+
+But if it gives you this error (like it systematically did for me):
+<pre class="prettyprint lang-text">
+mount: wrong fs type, bad option, bad superblock on /dev/loop0,
+       missing codepage or helper program, or other error
+
+       In some cases useful info is found in syslog - try
+       dmesg | tail or so.	
+</pre>
+And in dmesg:
+<pre class="prettyprint lang-text">
+...
+[141057.090911] EXT4-fs (loop0): bad geometry: block count 29304832 
+	exceeds size of device (28843552 blocks)
+...
+</pre>
+
+Hopefully, there are a bunch of userful linux commands which deal with corrupted filesystem. 
+First, we need to check the partition and then resize it so its size matches the one describer in the superblock:
+<pre class="prettyprint lang-text">
+# check the partition. Use fsck if you do not know the fs type
+# -v : verbose, -f : force
+fsck.ext4 -vf partition.img
+
+# resize the partition. -f : force
+resize2fs -f partition.img
+</pre>
+
+Then, try to mount it again and it should work.
+
+
+Another idea is to restore the partition using a vm, but I haven't tried it yet. 
