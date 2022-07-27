@@ -10,8 +10,21 @@ To configure it, simply add a file in your **xorg.conf.d** directory (in my case
 
 This file, named `50-marblemouse.conf` should look like this:
 
-\[display\_file
-path=/wp-content/themes/twentythirteen-child/post-files/50-marblemouse.conf\]
+```
+Section "InputClass"
+        Identifier  "Marble Mouse"
+        MatchProduct "Logitech USB Trackball"
+        MatchIsPointer "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "evdev"
+        Option "ButtonMapping" "1 2 3 4 5 6 7 8 9"
+        Option "EmulateWheel" "true"
+        Option "EmulateWheelButton" "9"
+        Option "ZAxisMapping" "4 5"
+        Option "XAxisMapping" "6 7"
+        Option "Emulate3Buttons" "true"
+EndSection
+```
 
 With this you'll have:
 
